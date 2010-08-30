@@ -1,13 +1,17 @@
+#! /usr/bin/env python
+
 import feedparser
 import urllib, urllib2
+import bencode
 
 storageFolder = "/Users/mike/Downloads/Torrents/"
 
-shows = ["South Park", "Futurama"]
+sources = {"isohunt" : "http://isohunt.com/js/rss/" + encShow + "?iht=&noSL", "ezrss" : "http://ezrss.it/search/index.php?show_name=" + encShow + "&show_name_exact=false&mode=rss&direct"}
+shows = ["South Park", "Futurama", "Its Always Sunny In Philadelphia", "30 Rock", "Mad Men", "Weeds", "The Office"]
 
 for show in shows:
     encShow = urllib.pathname2url(show)
-    feed = feedparser.parse("http://ezrss.it/search/index.php?show_name=" + encShow + "&show_name_exact=false&mode=rss&direct")
+    feed = feedparser.parse(sources["ezrss"])
     print("**************************************************************")
     print("Show: " + show)
     print("======================")
@@ -28,3 +32,12 @@ for show in shows:
         
         #fHandle.write(tempTorrent.read())
         #fHandle.close()
+rawTorrent = open("test.torrent")
+torrentData = rawTorrent.read()
+rawTorrent.close()
+decodedTorrent = bencode.bdecode(torrentData)
+#Change file name, etc. in here...
+newTorrent = bencode.bencode(decodedTorrent)
+newTorrentFile = open("test_modified.torrent", "w")
+newTorrentFile.write(newTorrent)
+newTorrentFile.close()
