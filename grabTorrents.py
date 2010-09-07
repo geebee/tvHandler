@@ -6,8 +6,8 @@ import bencode
 
 storageFolder = "/Users/mike/Downloads/Torrents/"
 
-sources = {"isohunt" : "http://isohunt.com/js/rss/" + encShow + "?iht=&noSL", "ezrss" : "http://ezrss.it/search/index.php?show_name=" + encShow + "&show_name_exact=false&mode=rss&direct"}
-shows = ["South Park", "Futurama", "Its Always Sunny In Philadelphia", "30 Rock", "Mad Men", "Weeds", "The Office"]
+sources = {"isohunt" : "http://isohunt.com/js/rss/" + encShow + "?iht=3&noSL", "ezrss" : "http://ezrss.it/search/index.php?show_name=" + encShow + "&show_name_exact=false&mode=rss&direct", "btjunkie" : "http://btjunkie.org/rss.xml?query=" + encShow}
+shows = ["South Park", "Futurama", "Its Always Sunny In Philadelphia", "30 Rock", "Mad Men", "Weeds", "The Office", "Sons Of Anarchy", "Dexter"]
 
 for show in shows:
     encShow = urllib.pathname2url(show)
