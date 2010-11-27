@@ -1,0 +1,24 @@
+GENERAL DESCRIPTION
+===================
+This project will eventually become a control point for handling a large database of TV Shows (both metadata, and actual episodes).
+
+For now, it consists of an episode renamer, and a .torrent downloader
+
+Episode Renamer
+===============
+There is an external dependancy on BeautifulSoup for this module
+
+This module runs against its own current directory (for now)
+
+Run Examples:
+  python ./episodeRenamer.py -e -p "SouthPark"
+  - This will run the renamer against all files, using the epguides.com parser (-e)
+  - This will execute the renamer in 'preview' mode (no rename actually occurs)
+  - This will use the name "SouthPark" as the SeriesID (ensure you know this)
+
+  python ./episodeRenamer.py -e "SouthPark"
+  - This will be identical to the above, but the file will actually be renamed.
+
+
+Torrent Grabber
+===============
