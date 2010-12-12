@@ -8,17 +8,36 @@ Episode Renamer
 ===============
 There is an external dependancy on BeautifulSoup for this module
 
-This module runs against its own current directory (for now)
+This module runs against its own current directory by default, but can be set to any directory that the user can write to with the -f <folder> / --folder=<folder> option
+
+The file on its own is also importable inside any other python script, and its options can be set via standard variable passing to the main function
+  - All the same defaults as the command line switches are preserved
+  - For example:
+     import episodeRenamer
+     episodeRenamer.main(title="SouthPark", verbose=True, folder="..")
 
 Run Examples:
-  python ./episodeRenamer.py -e -p "SouthPark"
-  - This will run the renamer against all files, using the epguides.com parser (-e)
+  python ./episodeRenamer.py -h
+  - This will print out the usage information and options (as below), then quit
+  
+  TV Episode Renamer - Usage:    python ./episodeRenamer.py --title="SHOW TITLE" [other options]
+    -h, --help           This help message
+    -v, --verbose        Turn on verbose output
+    -p, --preview        Don't actually rename files
+    -m, --mask="MASK"    printf style string for renaming mask
+      def: %(show)s - S%(series_num)02dE%(episode_num)02d - %(title)s.%(extension)s
+    -t, --title="TITLE"  Sets the show title for the search
+
+  python ./episodeRenamer.py -t "SouthPark" -p
   - This will execute the renamer in 'preview' mode (no rename actually occurs)
   - This will use the name "SouthPark" as the SeriesID (ensure you know this)
+  - This will use the current directory for renaming
 
-  python ./episodeRenamer.py -e "SouthPark"
+  python ./episodeRenamer.py -t "SouthPark"
   - This will be identical to the above, but the file will actually be renamed.
 
+  python ./episodeRenamer.py --title="SouthPark" --verbose --folder="~/episodes/South Park"
+  - This will be identical to the above, but the file will actually be renamed.
 
 Torrent Grabber
 ===============
