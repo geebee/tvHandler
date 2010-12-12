@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 
 import urllib2
-import optparse
 import re
 import os
 import sys
-import subprocess
-import random
+import getopt
+
+from tv.show import Show
 
 VERSION = "0.1-dev"
 
@@ -16,20 +16,14 @@ SERIES_PARSER = [
     re.compile("^(?:.*?\D|)(?P<series>\d\{1,2\})(?P<episode>\d\{2\})(?:\D.*|)\.(?P<extension>.*?)$", re.IGNORECASE),
     ]
     
-class Show:
-    def __init__(self, title=""):
-        self.title = title
-        self.attributes = {}
-        self.episodes = {}
-
 def get_page(page_url):
     try:
         return urllib2.urlopen(page_url).read()
     except urllib2.HTTPError, error:
-        print "An HTTP error occurred, HTTP code %s." % error.code
+        print "An HTTP error: %s." % error.code
         sys.exit()
 
-def parse_epguides(show_id, options):
+def parse_epguides(showName = ""):
     """Parse an epguides page."""
 
     site = {"url": ["http://epguides.com/%s/"],
@@ -37,7 +31,7 @@ def parse_epguides(show_id, options):
             "urlparser": "epguides.com\/(.*?)\/",
            }
 
-    page = get_page(site["url"][0] % show_id)
+    page = get_page(site["url"][0] % showName)
 
     from BeautifulSoup import BeautifulSoup
     soup = BeautifulSoup(page)
@@ -83,57 +77,85 @@ def parse_filename(show, filename, file_mask):
     
     return new_filename, info_dictionary
 
-def rename_files(show, file_mask, preview=False):
-    for filename in os.listdir("."):
-        try:
-            new_filename, info_dictionary = parse_filename(show, filename, file_mask)
-        except:
-            print 'Episode name for "%s" not found.' % filename
-            continue
-
-        print "Renaming \"%s\" to \"%s\"..." % (filename, new_filename.encode("ascii", "replace"))
-        if not preview:
+def rename_files(show = None, options = {}):
+    allowableExtensions = [".avi", ".mpg", ".mov", ".mkv"]
+    print("Allowable Extensions for Conversion: " + str(allowableExtensions))
+    for filename in os.listdir(options["folder"]):
+        extension = os.path.splitext(filename)[1]
+        if extension in allowableExtensions: 
             try:
-                os.rename(filename, new_filename)
+                new_filename, info_dictionary = parse_filename(show, filename, options["mask"])
             except:
-                print "There was an error while renaming the file."
+                print 'Episode name for "%s" not found.' % filename
+                continue
 
-def main():
-    parser = optparse.OptionParser(usage="%prog [options]", version="Episode Renamer v%s\n" % VERSION)
-    parser.add_option("-e",
-                      "--use-epguides",
-                      dest="use_epguides",
-                      action="store_true",
-                      help="use epguides.com")
-    parser.add_option("-m",
-                      "--mask",
-                      dest="mask",
-                      default="%(show)s - S%(series_num)02dE%(episode_num)02d - %(title)s.%(extension)s",
-                      metavar="MASK",
-                      action="store",
-                      type="string",
-                      help="the filename mask to use when renaming (default: \"%default\")")
-    parser.add_option("-p",
-                      "--preview",
-                      dest="preview",
-                      action="store_true",
-                      help="don't actually rename anything")
+            print "Renaming \"%s\" to \"%s\"..." % (filename, new_filename.encode("ascii", "replace"))
+            if options["preview"] == False:
+                try:
+                    os.rename(filename, new_filename)
+                except:
+                    print "There was an error while renaming the file."
+        else:
+            if options["verbose"] == True:
+                print(str(filename) + " has extension: " + extension + " and was not processed")
 
-    parser.set_defaults(preview=False)
-    (options, arguments)=parser.parse_args()
+def usage():
+    print("""TV Episode Renamer - Usage:
+    python ./episodeRenamer.py --title="SHOW TITLE" [other options]
+    -h, --help           This help message
+    -v, --verbose        Turn on verbose output
+    -p, --preview        Don't actually rename files
+    -m, --mask="MASK"    printf style string for renaming mask
+      def: %(show)s - S%(series_num)02dE%(episode_num)02d - %(title)s.%(extension)s
+    -t, --title="TITLE"  Sets the show title for the search
+    """)
 
-    if len(arguments) != 1:
-        parser.print_help()
-        sys.exit(1)
+def main(parser = "epguides", verbose = False, preview = False, mask="%(show)s - S%(series_num)02dE%(episode_num)02d - %(title)s.%(extension)s", folder=".", title = ""):
+    options = {
+        "parser": parser,
+        "verbose": verbose,
+        "preview": preview,
+        "mask": mask, 
+        "folder": folder,
+        "title": title
+    }
 
-    if options.use_epguides:
-        parser = parse_epguides
-    else:
-        print ("You must choose a parsing option")
-        sys.exit()
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "hvpm:f:t:", ["help", "verbose", "preview", "mask=", "folder=", "title="])
+    except getopt.GetoptError, err:
+        # print help information and exit:
+        print str(err) # will print something like "option -a not recognized"
+        usage()
+        sys.exit(2)
+    output = None
+    verbose = False
+    for o, a in opts:
+        if o in ("-h", "--help"):
+            usage()
+            sys.exit()
+        elif o in ("-v", "--verbose"):
+            print("Verbose output activated.")
+            options["verbose"] = True
+        elif o in ("-p", "--preview"):
+            print("Preview mode activated.") 
+            options["preview"] = True 
+        elif o in ("-m", "--mask"):
+            print("Non-Default Mask: " + a) 
+            options["mask"] = a
+        elif o in ("-f", "--folder"):
+            print("Conversion Directory: " + a) 
+            options["folder"] = a
+        elif o in ("-t", "--title"):
+            print("Show title: " + a)
+            options["title"] = a
+        else:
+            print("o: " + o + ", a: " + a)
+            assert False, "unhandled option"
+    
 
-    show = parser(arguments[0], options)
-    rename_files(show, options.mask, options.preview)
+    show = parse_epguides(options["title"])
+    rename_files(show, options)
+    
     print "Done."
 
 if __name__ == "__main__":

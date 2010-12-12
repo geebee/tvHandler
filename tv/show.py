@@ -2,9 +2,10 @@ from episode import Episode
 
 class Show (object):
     id = None
-    name = ""
+    title = ""
     actors = []
-    episodes = []
+    attributes = {}
+    episodes = {}
 
     def getShowById (self, showId = None):
         pass
