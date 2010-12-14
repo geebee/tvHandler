@@ -91,10 +91,12 @@ def rename_files(show = None, options = {}):
 
             print "Renaming \"%s\" to \"%s\"..." % (filename, new_filename.encode("ascii", "replace"))
             if options["preview"] == False:
+                
                 try:
-                    os.rename(filename, new_filename)
-                except:
-                    print "There was an error while renaming the file."
+                    os.rename(options["folder"] + "/" + filename, options["folder"] + "/" + new_filename)
+                except Exception as (errno, strerror):
+                    print("There was an error while renaming the file.")
+                    print("Error({0}): {1}".format(errno, strerror))
         else:
             if options["verbose"] == True:
                 print(str(filename) + " has extension: " + extension + " and was not processed")
