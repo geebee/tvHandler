@@ -1,13 +1,53 @@
 #!/usr/bin/env ruby
 
+require 'optparse'
 require 'net/http'
 require 'uri'
 require 'csv'
 
-tvLocation = "/media/tv"
-showTitle = "Trailer Park Boys"
-url = "http://epguides.com/common/exportToCSV.asp?rage=6408" 
-pageContent = Net::HTTP.get(URI.parse(url))
+options = {}
+
+optparse = OptionParser.new do |opts|
+    opts.banner = "Usage: ./epguides_compare_to_shows.rb --tv-folder/-f <directory> --title/-t <show title> ..."
+
+    options[:folder] = "/media/tv"
+    opts.on("-f", "--tv-folder FOLDER", "Top-Level directory containing the shows to compare") do |folder|
+        options[:folder] = folder
+    end
+
+    options[:title] = ""
+    opts.on("-t", "--title TITLE", "Title of the show to compare") do |title|
+        options[:title] = title
+    end
+
+    opts.on("-h", "--help", "Display this help screen") do
+        puts opts
+        exit
+    end
+end
+
+optparse.parse!
+
+tvLocation = "#{options[:folder]}"
+showTitle = "#{options[:title]}"
+
+if showTitle == ""
+    puts "-t/--title <show title> is a required parameter."
+    exit
+end
+
+puts "Using Directory: #{tvLocation}"
+puts "Show Title: #{showTitle}"
+
+epguidesTitle = showTitle.split(" ").join()
+epguidesURL = "http://epguides.com/#{epguidesTitle}/"
+getRageIdPage = Net::HTTP.get(URI.parse(epguidesURL))
+rageId = getRageIdPage.scan(/exportToCSV\.asp\?rage=([0-9]+)/).flatten[0]
+
+puts "Rage ID: #{rageId}"
+
+csvURL = "http://epguides.com/common/exportToCSV.asp?rage=#{rageId}" 
+pageContent = Net::HTTP.get(URI.parse(csvURL))
 
 showCSV = pageContent.gsub!(/<.*?>/, "").gsub!(/^list output\s+$/, "").gsub!(/^\s+$/, "").gsub!(/^$\n/, "")
 
