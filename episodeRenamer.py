@@ -73,7 +73,10 @@ def parse_filename(show, filename, file_mask):
     except KeyError:
         print 'Episode name for "%s" not found.' % filename
         raise Exception
-    new_filename = re.sub("[\\\:\*\"\?\<\>\|]", "", new_filename)
+    # Here is where there is a little bit of finesse needed for discarding characters that shouldn't be allowed in filenames...
+    #new_filename = re.sub("[\\\:\*\"\?\<\>\|]", "", new_filename)
+    # Allowed question marks in file names below
+    new_filename = re.sub("[\\\:\*\"\<\>\|]", "", new_filename)
     
     return new_filename, info_dictionary
 
