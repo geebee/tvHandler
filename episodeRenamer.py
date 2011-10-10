@@ -81,7 +81,7 @@ def parse_filename(show, filename, file_mask):
     return new_filename, info_dictionary
 
 def rename_files(show = None, options = {}):
-    allowableExtensions = [".avi", ".mpg", ".mov", ".mkv", ".mp4"]
+    allowableExtensions = [".avi", ".mpg", ".mov", ".mkv", ".mp4", ".m4v"]
     print("Allowable Extensions for Conversion: " + str(allowableExtensions))
     for filename in os.listdir(options["folder"]):
         extension = os.path.splitext(filename)[1]
