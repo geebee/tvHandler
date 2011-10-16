@@ -12,15 +12,18 @@ def parseShowToHash(showTitle = "")
     epguidesURL = "http://epguides.com/#{epguidesTitle}/"
 
     escapeHtmlEntities = HTMLEntities.new
-    preShowPage = Nokogiri::HTML(open(epguidesURL)).to_html.gsub!("\n","")
+
+    begin
+        preShowPage = Nokogiri::HTML(open(epguidesURL)).to_html.gsub!("\n","")
+    rescue OpenURI::HTTPError => e
+        puts "Could not open URL for show: #{showTitle}"
+        puts "..Exiting Function"
+        return Array.new
+    end
+
     showPage = escapeHtmlEntities.decode(preShowPage)
     showHashArray = Array.new
 
-    #puts "---------"
-    #puts showPage
-    #puts "---------"
-    
-    #showPage.scan(/\d+. +(\d+) *\- *(\d+).*?<a.*?>(.*?)<\/a>/) do |season, episode, title|
     showPage.scan(/[\d]+[\s]+([\d]+)\-([\d]+).*?([0-9]{2}\/[a-zA-Z]{3}\/[0-9]{2,4}|UNAIRED)[\s]+<a.*?>(.*?)<\/a>/) do |season, episode, airDate, title|
         #puts "Season: #{season}, Episode: #{episode} - Title: #{title} (Aired: #{airDate})"
         tempEpisodeHash = Hash.new
@@ -36,7 +39,7 @@ def parseShowToHash(showTitle = "")
         else
             tempEpisodeHash[:fileName] += "#{tempEpisodeHash[:season]}"
         end
-        
+
         tempEpisodeHash[:fileName] += "E#{tempEpisodeHash[:episode]}"
         #
         # Put no file extension on the 'fileName' attribute' for matching below
@@ -44,7 +47,7 @@ def parseShowToHash(showTitle = "")
 
         showHashArray.push(tempEpisodeHash)
     end
-    
+
     return showHashArray
 end
 
@@ -64,13 +67,13 @@ def compareShowHashToExisting(showHashArray = Hash.new, showTitle = "", tvLocati
     matchingEpisodes = 0
     missingAndAired = 0
     unairedEpisodes = 0
-    
+
     showHashArray.each_with_index do |ep, i|
         if File.exists?("#{tvLocation}/#{showTitle}/Season #{ep[:season]}/#{ep[:fileName]}.avi")\
-        or File.exists?("#{tvLocation}/#{showTitle}/Season #{ep[:season]}/#{ep[:fileName]}.mkv")\
-        or File.exists?("#{tvLocation}/#{showTitle}/Season #{ep[:season]}/#{ep[:fileName]}.mpg")\
-        or File.exists?("#{tvLocation}/#{showTitle}/Season #{ep[:season]}/#{ep[:fileName]}.mp4")\
-        or File.exists?("#{tvLocation}/#{showTitle}/Season #{ep[:season]}/#{ep[:fileName]}.m4v")
+            or File.exists?("#{tvLocation}/#{showTitle}/Season #{ep[:season]}/#{ep[:fileName]}.mkv")\
+            or File.exists?("#{tvLocation}/#{showTitle}/Season #{ep[:season]}/#{ep[:fileName]}.mpg")\
+            or File.exists?("#{tvLocation}/#{showTitle}/Season #{ep[:season]}/#{ep[:fileName]}.mp4")\
+            or File.exists?("#{tvLocation}/#{showTitle}/Season #{ep[:season]}/#{ep[:fileName]}.m4v")
             #puts "Exists"
             matchingEpisodes += 1
         else
@@ -94,46 +97,62 @@ def compareShowHashToExisting(showHashArray = Hash.new, showTitle = "", tvLocati
     puts "...#{unairedEpisodes} Are scheduled, but have not aired."
 end
 
+def getShowsToCompare(tvLocation = "")
+    raise ArgumentError, "tvLocation is a required parameter" if tvLocation.empty?
+
+    Dir.chdir(tvLocation)
+    showsToCheck = Dir["*"].reject{|o| not File.directory?(o)}.sort
+    puts "Shows to Check: #{showsToCheck}"
+    return showsToCheck
+end
+
+##### MAIN #####
 require 'optparse'
 
 options = {}
 
 optparse = OptionParser.new do |opts|
-    opts.banner = "Usage: ./epguides_compare_to_shows.rb --tv-folder/-f <directory> --title/-t <show title> ..."
+    opts.banner = "Usage: ./epguides_compare_to_shows.rb --tv-folder/-f <directory> [--title/-t <show title>]/[--scan/-s] ..."
 
-    options[:folder] = "/media/tv"
-    opts.on("-f", "--tv-folder FOLDER", "Top-Level directory containing the shows to compare") do |folder|
-        options[:folder] = folder
+    options[:tvLocation] = "/media/tv"
+    opts.on('-l', '--tv-location DIRECTORY', "Top-Level directory containing the shows to compare") do |directory|
+        options[:tvLocation] = directory
+        puts "Using Directory: #{options[:tvLocation]}"
     end
 
     options[:title] = ""
-    opts.on("-t", "--title TITLE", "Title of the show to compare") do |title|
-        options[:title] = title
+    opts.on('-t', '--title TITLE', "Title of the show to compare") do |title|
+        options[:title] = Array.new.push(title)
     end
 
-    opts.on("-h", "--help", "Display this help screen") do
+    options[:scan] = false
+    opts.on('-s', '--scan', "Will Scan '--tv-location' at a depth of 1 for shows to compare") do
+        options[:scan] = true
+    end
+
+    opts.on('-h', '--help', "Display this help screen") do
         puts opts
         exit
-    end
+    end    
 end
 
 optparse.parse!
-
-tvLocation = "#{options[:folder]}"
-showTitle = "#{options[:title]}"
-
-if showTitle == ""
-    puts "-t/--title <show title> is a required parameter."
-    exit
-end
-
-puts "Using Directory: #{tvLocation}"
-puts "Show Title: #{showTitle}"
-
-showsToCheck = ["30 Rock", "Alias", "Arrested Development"]
-# TODO: In future, iterate this array to make the hash of shows to parse, etc...
+# Command Line Option Sanity Checking
+abort("--scan and --title are mutually exclusive options") if (options[:title].empty? == false and options[:scan] == true)
+abort("One of --scan or --title 'Show Title' is necessary") if (options[:title].empty? and options[:scan] == false)
 
 shows = Hash.new
 
-shows["#{showTitle}"] = parseShowToHash(showTitle)
-compareShowHashToExisting(shows["#{showTitle}"], showTitle, tvLocation)
+if options[:scan] == true
+    showsToCompare = getShowsToCompare(options[:tvLocation])
+else
+    showsToCompare = options[:title]
+end
+
+showsToCompare.each_with_index do |showTitle, idx|
+    puts "Show Title: #{showTitle}"
+    shows["#{showTitle}"] = parseShowToHash(showTitle)
+    if shows["#{showTitle}"].empty? == false
+        compareShowHashToExisting(shows["#{showTitle}"], showTitle, options[:tvLocation])
+    end
+end
