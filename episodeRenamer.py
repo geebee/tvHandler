@@ -21,7 +21,7 @@ def get_page(page_url):
         return urllib2.urlopen(page_url).read()
     except urllib2.HTTPError, error:
         print "An HTTP error: %s." % error.code
-        sys.exit()
+        sys.exit(1)
 
 def parse_epguides(showName = ""):
     """Parse an epguides page."""
