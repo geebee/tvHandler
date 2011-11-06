@@ -14,7 +14,7 @@ SERIES_PARSER = [
     re.compile("^.*?s *(?P<series>\d+) *e *(?P<episode>\d+).*\.(?P<extension>.*?)$", re.IGNORECASE),
     re.compile("^.*?(?P<series>\d+)x(?P<episode>\d+).*\.(?P<extension>.*?)$", re.IGNORECASE),
     re.compile("^(?:.*?\D|)(?P<series>\d\{1,2\})(?P<episode>\d\{2\})(?:\D.*|)\.(?P<extension>.*?)$", re.IGNORECASE),
-    re.compile("^.*?(?P<series>\d)(?P<episode>\d+)\..*?\.(?P<extension>.*?)$",re.IGNORECASE)
+    re.compile("^.*?(?P<series>\d)(?P<episode>\d+)\..*\.(?P<extension>.*?)$",re.IGNORECASE)
     ]
     
 def get_page(page_url):
