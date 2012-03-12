@@ -8,7 +8,7 @@ import getopt
 
 from tv.show import Show
 
-VERSION = "0.1-dev"
+VERSION = "0.2-dev"
 
 SERIES_PARSER = [
     re.compile("^.*?s *(?P<series>\d+) *e *(?P<episode>\d+).*\.(?P<extension>.*?)$", re.IGNORECASE),
@@ -46,6 +46,30 @@ def parse_epguides(showName = ""):
     episodes = re.findall("\d+. +(?P<season>\d+) *\- *(?P<episode>\d+).*?<a.*?>(?P<name>.*?)</a>", page)
     for season, episode, name in episodes:
         show.episodes[(int(season), int(episode))] = {"title": name}
+    return show
+
+def parse_tvdb(showName = ""):
+    """Parse a tvdb_api call"""
+    try:
+        import tvdb_api
+    except Exception:
+        print "Could not import 'tvdb_api' library"
+        sys.exit()
+
+    show = Show()
+    try:
+        show.title = showName
+        tvdb = tvdb_api.Tvdb()
+        episodes = tvdb[show.title]
+
+        for sIndex in range(len(episodes)):
+            for epIndex in range(len(episodes[sIndex])):
+                # epIndex + 1 because the range is 0-indexed and the episodes are 1-indexed
+                #print(episodes[sIndex][epIndex + 1]['seasonnumber'] + "x" + episodes[sIndex][epIndex + 1]['episodenumber'] + " - " + episodes[sIndex][epIndex + 1]['episodename'])
+                show.episodes[(int(episodes[sIndex][epIndex + 1]['seasonnumber']), int(episodes[sIndex][epIndex + 1]['episodenumber']))] = {"title": episodes[sIndex][epIndex + 1]['episodename']}
+    except Exception:
+        print "Could not find show title, cannot continue."
+        sys.exit()
     return show
 
 def parse_filename(show, filename, file_mask):
@@ -93,7 +117,7 @@ def rename_files(show = None, options = {}):
                 print 'Episode name for "%s" not found.' % filename
                 continue
 
-            print "Renaming \"%s\" to \"%s\"..." % (filename, new_filename.encode("ascii", "replace"))
+            print "Renaming \"%s\" to \"%s\"." % (filename, new_filename.encode("ascii", "replace"))
             if options["preview"] == False:
                 
                 try:
@@ -111,6 +135,7 @@ def usage():
     -h, --help           This help message
     -v, --verbose        Turn on verbose output
     -p, --preview        Don't actually rename files
+    -a, --tvdb-api       Uses tvdb_api, not epguides for naming
     -m, --mask="MASK"    printf style string for renaming mask
       def: %(show)s - S%(series_num)02dE%(episode_num)02d - %(title)s.%(extension)s
     -t, --title="TITLE"  Sets the show title for the search
@@ -127,7 +152,7 @@ def main(parser = "epguides", verbose = False, preview = False, mask="%(show)s -
     }
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "hvpm:f:t:", ["help", "verbose", "preview", "mask=", "folder=", "title="])
+        opts, args = getopt.getopt(sys.argv[1:], "hvpam:f:t:", ["help", "verbose", "preview", "use_tvdb",  "mask=", "folder=", "title="])
     except getopt.GetoptError, err:
         # print help information and exit:
         print str(err) # will print something like "option -a not recognized"
@@ -145,6 +170,9 @@ def main(parser = "epguides", verbose = False, preview = False, mask="%(show)s -
         elif o in ("-p", "--preview"):
             print("Preview mode activated.") 
             options["preview"] = True 
+        elif o in ("-a", "--tvdb-api"):
+            print ("Using tvdb_api, not epguides")
+            options["use_tvdb"] = True
         elif o in ("-m", "--mask"):
             print("Non-Default Mask: " + a) 
             options["mask"] = a
@@ -159,8 +187,12 @@ def main(parser = "epguides", verbose = False, preview = False, mask="%(show)s -
             assert False, "unhandled option"
     
 
-    show = parse_epguides(options["title"])
-    rename_files(show, options)
+    if options["use_tvdb"] == True:
+        show = parse_tvdb(options["title"])
+        rename_files(show, options)
+    else:
+        show = parse_epguides(options["title"])
+        rename_files(show, options)
     
     print "Done."
 
