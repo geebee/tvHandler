@@ -39,7 +39,7 @@ def parse_epguides(showName = ""):
     page = unicode(soup).replace("\n", "")
     show = Show()
     try:
-        show.title = re.search("""<h1><a href="http://.*?">(.*?)</a></h1>""", page).groups()[0]
+        show.title = re.search("""<h1><a href="http://.*?">(.*?)</a></h1>""", page, re.IGNORECASE).groups()[0]
     except AttributeError:
         print "Could not find show title, cannot continue."
         sys.exit()
@@ -48,7 +48,7 @@ def parse_epguides(showName = ""):
         show.episodes[(int(season), int(episode))] = {"title": name}
     return show
 
-def parse_tvdb(showName = ""):
+def parse_tvdb(showName = "", useAbsoluteOrdering = False):
     """Parse a tvdb_api call"""
     try:
         import tvdb_api
@@ -66,8 +66,12 @@ def parse_tvdb(showName = ""):
             for epIndex in range(len(episodes[sIndex])):
                 # epIndex + 1 because the range is 0-indexed and the episodes are 1-indexed
                 #print(episodes[sIndex][epIndex + 1]['seasonnumber'] + "x" + episodes[sIndex][epIndex + 1]['episodenumber'] + " - " + episodes[sIndex][epIndex + 1]['episodename'])
-                show.episodes[(int(episodes[sIndex][epIndex + 1]['seasonnumber']), int(episodes[sIndex][epIndex + 1]['episodenumber']))] = {"title": episodes[sIndex][epIndex + 1]['episodename']}
-    except Exception:
+                if useAbsoluteOrdering == True:
+                    show.episodes[(int(episodes[sIndex][epIndex + 1]['seasonnumber']), int(episodes[sIndex][epIndex + 1]['absolute_number']))] = {"title": episodes[sIndex][epIndex + 1]['episodename']}
+                else:
+                    show.episodes[(int(episodes[sIndex][epIndex + 1]['seasonnumber']), int(episodes[sIndex][epIndex + 1]['episodenumber']))] = {"title": episodes[sIndex][epIndex + 1]['episodename']}
+    except Exception as showTitleException:
+        print "Exception while finding show title: " + str(showTitleException)
         print "Could not find show title, cannot continue."
         sys.exit()
     return show
@@ -148,11 +152,12 @@ def main(parser = "epguides", verbose = False, preview = False, mask="%(show)s -
         "preview": preview,
         "mask": mask, 
         "folder": folder,
-        "title": title
+        "title": title,
+        "useAbsoluteOrdering": False
     }
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "hvpam:f:t:", ["help", "verbose", "preview", "use_tvdb",  "mask=", "folder=", "title="])
+        opts, args = getopt.getopt(sys.argv[1:], "hvpaom:f:t:", ["help", "verbose", "preview", "use_tvdb", "useAbsoluteOrdering",  "mask=", "folder=", "title="])
     except getopt.GetoptError, err:
         # print help information and exit:
         print str(err) # will print something like "option -a not recognized"
@@ -173,6 +178,9 @@ def main(parser = "epguides", verbose = False, preview = False, mask="%(show)s -
         elif o in ("-a", "--tvdb-api"):
             print ("Using tvdb_api, not epguides")
             options["use_tvdb"] = True
+        elif o in ("-o", "--use-absolute-ordering"):
+            print "Using absolute ordering on episode numbers"
+            options["useAbsoluteOrdering"] = True
         elif o in ("-m", "--mask"):
             print("Non-Default Mask: " + a) 
             options["mask"] = a
@@ -187,10 +195,19 @@ def main(parser = "epguides", verbose = False, preview = False, mask="%(show)s -
             assert False, "unhandled option"
     
 
-    if options["use_tvdb"] == True:
-        show = parse_tvdb(options["title"])
-        rename_files(show, options)
-    else:
+    try:
+        if options["use_tvdb"] == True:
+            if options["useAbsoluteOrdering"] == True:
+                show = parse_tvdb(options["title"], useAbsoluteOrdering=True)
+            else:
+                show = parse_tvdb(options["title"])
+            rename_files(show, options)
+        else:
+            print("'use_tvdb' not set, using epGuides")
+            show = parse_epguides(options["title"])
+            rename_files(show, options)
+    except KeyError:
+        print("'use_tvdb' not set, using epGuides")
         show = parse_epguides(options["title"])
         rename_files(show, options)
     
